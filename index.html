@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ocean Defender: 語法保衛戰</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Noto+Sans+TC:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Nunito', 'Noto Sans TC', sans-serif;
+            background: linear-gradient(180deg, #0f4c75 0%, #3282b8 100%);
+            color: white;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .bubble {
+            animation: float 4s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+
+        .shake {
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+
+        .word-block {
+            transition: all 0.2s ease;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .word-block:hover {
+            transform: scale(1.05);
+        }
+
+        select {
+            color: #0f4c75;
+            font-weight: bold;
+            border-radius: 0.375rem;
+            padding: 0.1rem 0.5rem;
+            margin: 0 0.25rem;
+            background-color: #bbe1fa;
+            border: 2px solid #3282b8;
+            appearance: none;
+            cursor: pointer;
+        }
+
+        /* Scaffold Colors for Level 4 (Tetris) */
+        .bg-noun { background-color: #3b82f6; } 
+        .bg-rel { background-color: #ef4444; } 
+        .bg-verb { background-color: #10b981; } 
+        .bg-neutral-word { background-color: #6b7280; }
+        
+        /* 錯題本卷軸樣式 */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center p-4">
+
+    <div id="game-container" class="w-full max-w-3xl bg-white/10 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden relative min-h-[650px] flex flex-col">
+        
+        <div class="bg-blue-900/50 p-4 flex justify-between items-center border-b border-blue-400/30">
+            <div class="text-xl font-bold flex items-center"><i class="fa-solid fa-anchor mr-2"></i>Ocean Defender</div>
+            <div class="flex space-x-3">
+                <div class="text-lg font-bold bg-white text-blue-900 px-3 py-1 rounded-full flex items-center shadow-md">
+                    <i class="fa-solid fa-clock mr-2 text-blue-500"></i><span id="timer-display">00:00</span>
+                </div>
+                <div class="text-lg font-bold bg-yellow-400 text-blue-900 px-4 py-1 rounded-full shadow-md">
+                    分數: <span id="score">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="feedback-overlay" class="absolute inset-0 z-50 hidden flex-col items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity">
+            <i id="feedback-icon" class="text-6xl mb-4"></i>
+            <h2 id="feedback-text" class="text-4xl font-bold mb-4 text-center px-4"></h2>
+            <button onclick="hideFeedback()" class="bg-yellow-400 hover:bg-yellow-500 text-blue-900 font-bold py-2 px-6 rounded-full text-xl shadow-lg transition-transform transform hover:scale-105 mt-4">
+                繼續 <i class="fa-solid fa-arrow-right ml-2"></i>
+            </button>
+        </div>
+
+        <div id="screen-container" class="flex-1 p-6 flex flex-col relative">
+            
+            <div id="screen-start" class="flex-1 flex flex-col items-center justify-center text-center">
+                <i class="fa-solid fa-earth-oceania text-8xl text-blue-300 mb-6 bubble"></i>
+                <h1 class="text-4xl font-black mb-4 text-yellow-300 tracking-wider">海洋保衛戰：語法特訓</h1>
+                <p class="text-lg mb-8 max-w-md">深海正受到語法錯誤與塑膠廢料的污染！身為海洋生物學家，你需要運用「關係代名詞」的知識來淨化海洋。</p>
+                <div class="bg-blue-900/50 p-4 rounded-xl mb-6 w-full max-w-sm">
+                    <h3 class="font-bold text-yellow-300 mb-2"><i class="fa-solid fa-book-open mr-2"></i> 行前特訓 (Front-End Scaffold)</h3>
+                    <ul class="text-left space-y-2 text-sm">
+                        <li>🧑 看到「人」 ➡️ 選擇 <span class="text-yellow-300 font-bold">who</span> 或 that</li>
+                        <li>🐟 看到「物/動物」 ➡️ 選擇 <span class="text-yellow-300 font-bold">which</span> 或 that</li>
+                        <li>⚠️ 遇到 <span class="text-yellow-300 font-bold">the only, all, 序數</span> 等字眼 ➡️ 只能用 <span class="text-red-400 font-bold">that</span>！</li>
+                    </ul>
+                </div>
+                <button onclick="startLevel(1)" class="bg-yellow-400 hover:bg-yellow-500 text-blue-900 font-black py-4 px-10 rounded-full text-2xl shadow-xl transition-transform transform hover:scale-105">
+                    開始任務 <i class="fa-solid fa-play ml-2"></i>
+                </button>
+            </div>
+
+            <div id="screen-level1" class="hidden flex-1 flex-col">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-yellow-300">Level 1: 先行詞陷阱</h2>
+                    <button onclick="showHint(1)" class="bg-blue-500/50 hover:bg-blue-500 rounded-full w-10 h-10 flex items-center justify-center transition-colors">
+                        <i class="fa-solid fa-lightbulb text-yellow-300"></i>
+                    </button>
+                </div>
+                
+                <div class="flex-1 flex flex-col items-center justify-center w-full">
+                    <div id="l1-progress" class="text-sm font-bold mb-4 text-blue-200">題目 1 / 4</div>
+                    
+                    <div class="bg-white/20 p-6 rounded-2xl w-full text-center text-2xl font-bold mb-10 shadow-inner min-h-[120px] flex items-center justify-center">
+                        <p id="l1-sentence"></p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-6 w-full max-w-md">
+                        <button onclick="checkL1Answer('who')" class="group relative bg-blue-600 hover:bg-blue-500 border-4 border-blue-400 rounded-2xl p-6 flex flex-col items-center transition-all hover:-translate-y-2">
+                            <i class="fa-solid fa-user-astronaut text-4xl mb-2 text-blue-200 group-hover:text-white"></i>
+                            <span class="text-2xl font-black">WHO / THAT</span>
+                        </button>
+                        <button onclick="checkL1Answer('which')" class="group relative bg-teal-600 hover:bg-teal-500 border-4 border-teal-400 rounded-2xl p-6 flex flex-col items-center transition-all hover:-translate-y-2">
+                            <i class="fa-solid fa-fish text-4xl mb-2 text-teal-200 group-hover:text-white"></i>
+                            <span class="text-2xl font-black">WHICH / THAT</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="screen-level2" class="hidden flex-1 flex-col">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-yellow-300">Level 2: 克漏字洋流</h2>
+                    <button onclick="showHint(2)" class="bg-blue-500/50 hover:bg-blue-500 rounded-full w-10 h-10 flex items-center justify-center transition-colors">
+                        <i class="fa-solid fa-lightbulb text-yellow-300"></i>
+                    </button>
+                </div>
+
+                <div class="bg-white text-blue-900 p-6 rounded-2xl text-lg leading-relaxed shadow-xl mt-4">
+                    <p class="mb-4">
+                        Many people think fish farming is a good solution 
+                        <select id="l2-q1">
+                            <option value="">(1) ___</option>
+                            <option value="to">to</option>
+                            <option value="for">for</option>
+                            <option value="on">on</option>
+                        </select> 
+                        this problem.
+                    </p>
+                    <p class="mb-4">
+                        However, the <span class="font-bold underline decoration-blue-400 decoration-2">fish</span> 
+                        <select id="l2-q2">
+                            <option value="">(2) ___</option>
+                            <option value="who">who</option>
+                            <option value="what">what</option>
+                            <option value="that">that</option>
+                        </select> 
+                        are kept in these crowded farms often get sick easily.
+                    </p>
+                    <p class="mb-4">
+                        Therefore, we need to listen to the <span class="font-bold underline decoration-blue-400 decoration-2">experts</span> 
+                        <select id="l2-q3">
+                            <option value="">(3) ___</option>
+                            <option value="who">who</option>
+                            <option value="which">which</option>
+                            <option value="they">they</option>
+                        </select> 
+                        study marine biology.
+                    </p>
+                    <p class="border-t-2 border-blue-100 pt-4">
+                        Also, if we want to reduce our impact 
+                        <select id="l2-q4">
+                            <option value="">(4) ___</option>
+                            <option value="to">to</option>
+                            <option value="on">on</option>
+                            <option value="in">in</option>
+                        </select> 
+                        the ocean, we must change our habits. We can no longer rely 
+                        <select id="l2-q5">
+                            <option value="">(5) ___</option>
+                            <option value="with">with</option>
+                            <option value="in">in</option>
+                            <option value="on">on</option>
+                        </select> 
+                        plastic products. Instead, we should make use 
+                        <select id="l2-q6">
+                            <option value="">(6) ___</option>
+                            <option value="of">of</option>
+                            <option value="off">off</option>
+                            <option value="for">for</option>
+                        </select> 
+                        eco-friendly materials to protect marine life.
+                    </p>
+                </div>
+
+                <div class="mt-8 text-center">
+                    <button onclick="checkL2Answers()" class="bg-yellow-400 hover:bg-yellow-500 text-blue-900 font-bold py-3 px-8 rounded-full text-xl shadow-lg transition-transform transform hover:scale-105">
+                        <i class="fa-solid fa-check-circle mr-2"></i> 檢查答案
+                    </button>
+                </div>
+            </div>
+
+            <div id="screen-level3" class="hidden flex-1 flex-col">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-yellow-300">Level 3: That 的絕對領域</h2>
+                    <button onclick="showHint(3)" class="bg-blue-500/50 hover:bg-blue-500 rounded-full w-10 h-10 flex items-center justify-center transition-colors">
+                        <i class="fa-solid fa-lightbulb text-yellow-300"></i>
+                    </button>
+                </div>
+                
+                <div class="flex-1 flex flex-col items-center justify-center w-full">
+                    <div id="l3-progress" class="text-sm font-bold mb-4 text-blue-200">題目 1 / 4</div>
+                    
+                    <div class="bg-red-900/60 border-l-4 border-red-400 p-4 rounded-r-lg mb-6 w-full max-w-lg text-sm text-red-100">
+                        <i class="fa-solid fa-triangle-exclamation mr-1"></i> 注意：以下情境中，關係代名詞**只能**使用 That！
+                    </div>
+
+                    <div class="bg-white/20 p-6 rounded-2xl w-full max-w-lg text-center text-xl font-bold mb-8 shadow-inner min-h-[100px] flex items-center justify-center">
+                        <p id="l3-sentence"></p>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-4 w-full max-w-lg" id="l3-options">
+                    </div>
+                </div>
+            </div>
+
+            <div id="screen-level4" class="hidden flex-1 flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-yellow-300">Level 4: 結構俄羅斯方塊</h2>
+                    <button onclick="showHint(4)" class="bg-blue-500/50 hover:bg-blue-500 rounded-full w-10 h-10 flex items-center justify-center transition-colors">
+                        <i class="fa-solid fa-lightbulb text-yellow-300"></i>
+                    </button>
+                </div>
+                
+                <div class="flex justify-center space-x-4 mb-4 text-xs font-bold">
+                    <div class="flex items-center"><span class="w-3 h-3 bg-blue-500 rounded-full mr-1"></span>主要名詞(N)</div>
+                    <div class="flex items-center"><span class="w-3 h-3 bg-red-500 rounded-full mr-1"></span>關代(Rel)</div>
+                    <div class="flex items-center"><span class="w-3 h-3 bg-green-500 rounded-full mr-1"></span>修飾動詞(V)</div>
+                </div>
+
+                <div class="flex-1 flex flex-col justify-between">
+                    <div class="bg-blue-900/60 border-l-4 border-yellow-400 p-4 rounded-r-lg mb-6">
+                        <p class="text-sm text-blue-300 mb-1">請依照英文邏輯 (N + 關代 + V) 重組句子：</p>
+                        <p id="l4-target-zh" class="text-xl font-bold text-white"></p>
+                    </div>
+
+                    <div id="l4-answer-zone" class="min-h-[80px] bg-white/10 border-2 border-dashed border-blue-300 rounded-xl p-4 flex flex-wrap gap-2 items-center mb-6">
+                    </div>
+
+                    <div id="l4-word-bank" class="bg-black/20 p-4 rounded-xl flex flex-wrap gap-2 items-center justify-center mb-6 min-h-[120px]">
+                    </div>
+
+                    <div class="text-center">
+                        <button onclick="checkL4Answer()" class="bg-yellow-400 hover:bg-yellow-500 text-blue-900 font-bold py-3 px-8 rounded-full text-xl shadow-lg transition-transform transform hover:scale-105">
+                            <i class="fa-solid fa-paper-plane mr-2"></i> 送出翻譯
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="screen-level5" class="hidden flex-1 flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-yellow-300"><i class="fa-solid fa-skull mr-2"></i>Level 5: 終極實力測驗</h2>
+                    <button onclick="showHint(5)" class="bg-red-500/80 hover:bg-red-500 rounded-full w-10 h-10 flex items-center justify-center transition-colors shadow-lg">
+                        <i class="fa-solid fa-life-ring text-white"></i>
+                    </button>
+                </div>
+                
+                <div class="flex-1 flex flex-col items-center justify-start w-full mt-4">
+                    <div id="l5-progress" class="text-sm font-bold mb-4 text-blue-200">測驗 1 / 5</div>
+
+                    <div class="bg-white text-blue-900 p-6 rounded-2xl w-full max-w-2xl text-xl font-bold mb-8 shadow-xl border-l-8 border-yellow-400 flex items-center min-h-[120px]">
+                        <p id="l5-question"></p>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-2xl" id="l5-options">
+                    </div>
+                </div>
+            </div>
+
+            <div id="screen-end" class="hidden flex-1 flex-col items-center justify-start text-center py-4 h-full overflow-hidden">
+                <i class="fa-solid fa-trophy text-6xl text-yellow-400 mb-4 bubble"></i>
+                <h1 class="text-3xl font-black mb-4 text-white">任務完成！海洋得救了！</h1>
+                
+                <div class="flex space-x-6 justify-center mb-6">
+                    <p class="text-xl">最終分數: <span id="final-score" class="text-yellow-300 font-bold text-3xl">0</span></p>
+                    <p class="text-xl border-l-2 border-white/30 pl-6">花費時間: <span id="final-time" class="text-yellow-300 font-bold text-3xl">00:00</span></p>
+                </div>
+                
+                <div class="bg-white/10 border border-white/30 p-6 rounded-2xl w-full max-w-2xl text-left shadow-lg mb-6 flex-1 flex flex-col min-h-0">
+                    <h3 class="font-bold text-yellow-300 mb-4 text-2xl flex items-center justify-between border-b border-white/20 pb-2">
+                        <span><i class="fa-solid fa-book-journal-whills mr-2"></i> 專屬錯題本</span>
+                        <span class="text-sm text-blue-200 font-normal">請截圖或抄寫複習</span>
+                    </h3>
+                    
+                    <div id="mistake-list" class="overflow-y-auto custom-scrollbar pr-2 flex-1 space-y-4">
+                        </div>
+                </div>
+
+                <button onclick="location.reload()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-10 rounded-full text-xl shadow-lg transition-transform transform hover:scale-105 mb-4 shrink-0">
+                    <i class="fa-solid fa-rotate-right mr-2"></i> 挑戰再次通關
+                </button>
+            </div>
+
+        </div>
+        
+        <div id="hint-modal" class="absolute inset-x-0 bottom-0 z-40 hidden bg-blue-900 border-t-4 border-yellow-400 p-6 shadow-2xl transition-transform duration-300 transform translate-y-full">
+            <div class="flex justify-between items-start">
+                <div class="flex items-start">
+                    <i class="fa-solid fa-chalkboard-user text-3xl text-yellow-300 mr-4 mt-1"></i>
+                    <div>
+                        <h3 class="font-bold text-xl text-yellow-300 mb-2">學習策略提示</h3>
+                        <p id="hint-text" class="text-lg"></p>
+                    </div>
+                </div>
+                <button onclick="closeHint()" class="text-white hover:text-red-400 text-2xl ml-4">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA TRACKING (錯題本機制) ---
+        let mistakeLog = [];
+
+        function recordMistake(questionHtml, userAnswer, correctAnswer, hintHtml) {
+            // 避免重複記錄同一題
+            const isDuplicate = mistakeLog.some(m => m.question === questionHtml);
+            if (!isDuplicate) {
+                mistakeLog.push({
+                    question: questionHtml,
+                    userAns: userAnswer,
+                    correctAns: correctAnswer,
+                    hint: hintHtml
+                });
+            }
+        }
+
+        // --- TIMER SYSTEM ---
+        let timerInterval = null;
+        let secondsElapsed = 0;
+
+        function startTimer() {
+            if (timerInterval) return;
+            timerInterval = setInterval(() => {
+                secondsElapsed++;
+                const mins = String(Math.floor(secondsElapsed / 60)).padStart(2, '0');
+                const secs = String(secondsElapsed % 60).padStart(2, '0');
+                document.getElementById('timer-display').innerText = `${mins}:${secs}`;
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+
+        // --- FIREWORKS SYSTEM (canvas-confetti) ---
+        function triggerFireworks(isBig = false) {
+            if (isBig) {
+                var duration = 3 * 1000;
+                var animationEnd = Date.now() + duration;
+                var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 };
+
+                function randomInRange(min, max) { return Math.random() * (max - min) + min; }
+
+                var interval = setInterval(function() {
+                    var timeLeft = animationEnd - Date.now();
+                    if (timeLeft <= 0) { return clearInterval(interval); }
+                    var particleCount = 50 * (timeLeft / duration);
+                    confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+                    confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+                }, 250);
+            } else {
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, zIndex: 9999 });
+            }
+        }
+
+        // --- AUDIO SYSTEM ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+
+        function initAudio() {
+            if (!audioCtx) { audioCtx = new AudioContext(); }
+            if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+        }
+
+        function playSound(isCorrect) {
+            initAudio();
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            if (isCorrect) {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
+                osc.frequency.exponentialRampToValueAtTime(1760, audioCtx.currentTime + 0.1); 
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                osc.start(audioCtx.currentTime);
+                osc.stop(audioCtx.currentTime + 0.4);
+            } else {
+                osc.type = 'sawtooth'; 
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.2);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                osc.start(audioCtx.currentTime);
+                osc.stop(audioCtx.currentTime + 0.2);
+            }
+        }
+
+        // --- GAME STATE & DATA ---
+        let score = 0;
+        
+        const l1Data = [
+            { text: "The <span class='font-bold text-yellow-300 text-3xl underline underline-offset-4 decoration-2'>chemicals</span> _____ flow into the ocean...", answer: "which", hint: "Chemicals (化學物質) 是一種物品喔！" },
+            { text: "<span class='font-bold text-yellow-300 text-3xl underline underline-offset-4 decoration-2'>Fishers</span> _____ rely on tuna...", answer: "who", hint: "Fishers (漁夫) 是一群人！" },
+            { text: "The <span class='font-bold text-yellow-300 text-3xl underline underline-offset-4 decoration-2'>solution</span> _____ we need...", answer: "which", hint: "Solution (解決方案) 是一件事情/物品。" },
+            { text: "Ali Tabrizi is a <span class='font-bold text-yellow-300 text-3xl underline underline-offset-4 decoration-2'>person</span> _____ cares about the ocean.", answer: "who", hint: "Person (人) 很明顯是人類對吧！" }
+        ];
+        let l1CurrentIndex = 0;
+
+        const l3Data = [
+            { text: "I helped a <span class='font-bold text-yellow-300 underline'>boy and his dog</span> _____ got lost in the market.", options: ['who', 'which', 'that'], answer: "that", hint: "先行詞同時包含「人＋動物」時，關代只能用 that 喔！" },
+            { text: "Neil Armstrong was the <span class='font-bold text-yellow-300 underline'>first</span> human _____ stepped onto the moon.", options: ['who', 'which', 'that'], answer: "that", hint: "有「the first (序數)」修飾先行詞時，只能用 that！" },
+            { text: "Is there <span class='font-bold text-yellow-300 underline'>anything</span> _____ has bothered you recently?", options: ['who', 'which', 'that'], answer: "that", hint: "先行詞是 anything, everything, all 等字時，只能用 that！" },
+            { text: "<span class='font-bold text-yellow-300 underline'>Who</span> is the girl _____ asked you out?", options: ['who', 'which', 'that'], answer: "that", hint: "句子已經用 Who 開頭了，為了避免重複，關代要改用 that！" }
+        ];
+        let l3CurrentIndex = 0;
+
+        const l4Data = [
+            {
+                zh: "破壞海洋的塑膠廢料被視為一個大問題。",
+                blocks: [
+                    { id: 'b1', text: 'Plastic waste', type: 'noun', colorClass: 'bg-noun' },
+                    { id: 'b2', text: 'which', type: 'rel', colorClass: 'bg-rel' },
+                    { id: 'b3', text: 'harms the ocean', type: 'verb', colorClass: 'bg-verb' },
+                    { id: 'b4', text: 'is regarded as', type: 'neutral', colorClass: 'bg-neutral-word' },
+                    { id: 'b5', text: 'a big problem', type: 'neutral', colorClass: 'bg-neutral-word' }
+                ],
+                correctOrder: ['b1', 'b2', 'b3', 'b4', 'b5']
+            },
+            {
+                zh: "依賴海洋的漁夫們必須改變。",
+                blocks: [
+                    { id: 'c1', text: 'Fishers', type: 'noun', colorClass: 'bg-noun' },
+                    { id: 'c2', text: 'who', type: 'rel', colorClass: 'bg-rel' },
+                    { id: 'c3', text: 'rely on the ocean', type: 'verb', colorClass: 'bg-verb' },
+                    { id: 'c4', text: 'must change', type: 'neutral', colorClass: 'bg-neutral-word' }
+                ],
+                correctOrder: ['c1', 'c2', 'c3', 'c4']
+            },
+            {
+                zh: "修理任何漏水的水管。",
+                blocks: [
+                    { id: 'w1', text: 'Fix any water pipes', type: 'noun', colorClass: 'bg-noun' },
+                    { id: 'w2', text: 'that', type: 'rel', colorClass: 'bg-rel' },
+                    { id: 'w3', text: 'are leaking', type: 'verb', colorClass: 'bg-verb' }
+                ],
+                correctOrder: ['w1', 'w2', 'w3']
+            }
+        ];
+        let l4CurrentIndex = 0;
+        let l4CurrentAnswer = [];
+
+        const l5Data = [
+            {
+                text: "1. Farmers _____ rice regard sparrows (麻雀) as enemies because they eat the rice.",
+                options: ["(A) who grow", "(B) which grow", "(C) grow", "(D) grows"],
+                answer: "(A) who grow",
+                hint: "Farmers (農夫) 是人，請用 who。另外 Farmers 是複數，後面的動詞不加 s 喔！"
+            },
+            {
+                text: "2. Titanic is the only movie _____ made me cry.",
+                options: ["(A) which is", "(B) that is", "(C) that", "(D) who"],
+                answer: "(C) that",
+                hint: "注意先行詞前方的「the only (唯一的)」！這是只能使用 That 的絕對領域。"
+            },
+            {
+                text: "3. They lived in a castle _____ old but beautiful.",
+                options: ["(A) who was", "(B) which was", "(C) which are", "(D) what was"],
+                answer: "(B) which was",
+                hint: "castle (城堡) 是物品，且是單數，後面的B動詞請用單數過去式 (was)。"
+            },
+            {
+                text: "4. People on the bus stared at the boy _____ loudly on his cellphone.",
+                options: ["(A) who was talking", "(B) which talking", "(C) who talk", "(D) that was talked"],
+                answer: "(A) who was talking",
+                hint: "the boy (男孩) 是人，而當時「正在」講電話，需要搭配 was talking。"
+            },
+            {
+                text: "5. We stayed at a hotel _____ the ocean.",
+                options: ["(A) who faces", "(B) which faces", "(C) which face", "(D) what faces"],
+                answer: "(B) which faces",
+                hint: "a hotel (飯店) 是單數物品，關代後接的動詞要記得加 s (faces)！"
+            }
+        ];
+        let l5CurrentIndex = 0;
+
+
+        // --- UI FUNCTIONS ---
+        function updateScore(points) {
+            score += points;
+            document.getElementById('score').innerText = score;
+        }
+
+        function switchScreen(screenId) {
+            ['screen-start', 'screen-level1', 'screen-level2', 'screen-level3', 'screen-level4', 'screen-level5', 'screen-end'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById('screen-' + screenId).classList.remove('hidden');
+            
+            const modal = document.getElementById('hint-modal');
+            modal.classList.add('translate-y-full');
+            modal.classList.add('hidden');
+        }
+
+        function showOverlayFeedback(isCorrect, message, nextAction) {
+            playSound(isCorrect);
+            const overlay = document.getElementById('feedback-overlay');
+            const icon = document.getElementById('feedback-icon');
+            const text = document.getElementById('feedback-text');
+            const btn = overlay.querySelector('button');
+
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+
+            if (isCorrect) {
+                icon.className = "fa-solid fa-circle-check text-7xl text-green-400 mb-4";
+                text.className = "text-4xl font-bold mb-4 text-green-400";
+            } else {
+                icon.className = "fa-solid fa-circle-xmark text-7xl text-red-400 mb-4";
+                text.className = "text-3xl font-bold mb-4 text-red-400";
+                document.getElementById('game-container').classList.add('shake');
+                setTimeout(() => document.getElementById('game-container').classList.remove('shake'), 500);
+            }
+
+            text.innerHTML = message;
+            btn.onclick = () => {
+                hideFeedback();
+                if (nextAction) nextAction();
+            };
+        }
+
+        function hideFeedback() {
+            const overlay = document.getElementById('feedback-overlay');
+            overlay.classList.add('hidden');
+            overlay.classList.remove('flex');
+            const modal = document.getElementById('hint-modal');
+            modal.classList.add('translate-y-full');
+            modal.classList.add('hidden');
+        }
+
+        function showHint(level) {
+            initAudio();
+            const modal = document.getElementById('hint-modal');
+            const hintText = document.getElementById('hint-text');
+            
+            if (level === 1) hintText.innerHTML = "👀 仔細看黃色底線的單字（先行詞）！<br>自問自答：" + l1Data[l1CurrentIndex].hint;
+            else if (level === 2) hintText.innerHTML = "💡 <b>鷹架提示：</b><br>1. 看看空格前的名詞 (fish, experts) 決定關代。<br>2. 介系詞搭配：solution ___, impact ___, rely ___, make use ___ (回想單字簡報中標紅字的陷阱！)";
+            else if (level === 3) hintText.innerHTML = "🎯 <b>That的絕對領域：</b><br>" + l3Data[l3CurrentIndex].hint;
+            else if (level === 4) hintText.innerHTML = "🧱 <b>結構提示：</b> 英文跟中文的順序相反喔！<br>先寫主角 <span class='text-blue-300 font-bold'>(名詞/動作對象)</span>，馬上接 <span class='text-red-400 font-bold'>(關係代名詞)</span>，最後加上剩下的句子。";
+            else if (level === 5) hintText.innerHTML = "🛡️ <b>救援提示：</b><br>" + l5Data[l5CurrentIndex].hint;
+
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.remove('translate-y-full'), 10);
+        }
+
+        function closeHint() {
+            const modal = document.getElementById('hint-modal');
+            modal.classList.add('translate-y-full');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        // --- LEVEL CONTROLLER ---
+        function startLevel(level) {
+            initAudio();
+            startTimer();
+            if (level === 1) { l1CurrentIndex = 0; loadL1Question(); switchScreen('level1'); }
+            else if (level === 2) { switchScreen('level2'); }
+            else if (level === 3) { l3CurrentIndex = 0; loadL3Question(); switchScreen('level3'); }
+            else if (level === 4) { l4CurrentIndex = 0; loadL4Question(); switchScreen('level4'); }
+            else if (level === 5) { l5CurrentIndex = 0; loadL5Question(); switchScreen('level5'); }
+        }
+
+        // --- LEVEL LOGIC ---
+        function loadL1Question() {
+            const q = l1Data[l1CurrentIndex];
+            document.getElementById('l1-sentence').innerHTML = q.text;
+            document.getElementById('l1-progress').innerText = `題目 ${l1CurrentIndex + 1} / ${l1Data.length}`;
+        }
+
+        function checkL1Answer(selected) {
+            const q = l1Data[l1CurrentIndex];
+            if (selected === q.answer) {
+                updateScore(10);
+                l1CurrentIndex++;
+                if (l1CurrentIndex < l1Data.length) showOverlayFeedback(true, "答對了！", () => loadL1Question());
+                else { triggerFireworks(false); showOverlayFeedback(true, "Level 1 通過！進入下一關", () => startLevel(2)); }
+            } else {
+                recordMistake(q.text, selected.toUpperCase(), q.answer.toUpperCase(), q.hint);
+                showOverlayFeedback(false, "答錯囉！請看提示再試一次", () => showHint(1));
+            }
+        }
+
+        function checkL2Answers() {
+            const q1 = document.getElementById('l2-q1').value;
+            const q2 = document.getElementById('l2-q2').value;
+            const q3 = document.getElementById('l2-q3').value;
+            const q4 = document.getElementById('l2-q4').value;
+            const q5 = document.getElementById('l2-q5').value;
+            const q6 = document.getElementById('l2-q6').value;
+
+            if (q1 === 'to' && q2 === 'that' && q3 === 'who' && q4 === 'on' && q5 === 'on' && q6 === 'of') {
+                updateScore(50);
+                triggerFireworks(false); 
+                showOverlayFeedback(true, "完美！完全掌握克漏字與單字介系詞", () => startLevel(3));
+            } else {
+                let msg = "還有地方錯喔：<br><div class='text-left text-base mt-2 inline-block'>";
+                if (q1 !== 'to') msg += "<div>- solution 搭配的介系詞錯了</div>";
+                if (q2 !== 'that') msg += "<div>- fish (動物) 要配哪個關代？</div>";
+                if (q3 !== 'who') msg += "<div>- experts (專家/人) 要配哪個關代？</div>";
+                if (q4 !== 'on') msg += "<div>- impact (影響) 搭配的介系詞錯了</div>";
+                if (q5 !== 'on') msg += "<div>- rely (依賴) 搭配的介系詞錯了</div>";
+                if (q6 !== 'of') msg += "<div>- make use (利用) 搭配的介系詞錯了</div>";
+                msg += "</div>";
+                showOverlayFeedback(false, msg, () => showHint(2));
+            }
+        }
+
+        function loadL3Question() {
+            const q = l3Data[l3CurrentIndex];
+            document.getElementById('l3-sentence').innerHTML = q.text;
+            document.getElementById('l3-progress').innerText = `題目 ${l3CurrentIndex + 1} / ${l3Data.length}`;
+            const optionsContainer = document.getElementById('l3-options');
+            optionsContainer.innerHTML = '';
+            q.options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = "bg-blue-600 hover:bg-blue-500 border-2 border-blue-400 rounded-xl py-4 font-bold text-xl uppercase transition-transform transform hover:scale-105";
+                btn.innerText = opt;
+                btn.onclick = () => checkL3Answer(opt);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function checkL3Answer(selected) {
+            const q = l3Data[l3CurrentIndex];
+            if (selected === q.answer) {
+                updateScore(15);
+                l3CurrentIndex++;
+                if (l3CurrentIndex < l3Data.length) showOverlayFeedback(true, "答對了！掌握特殊規則！", () => loadL3Question());
+                else { triggerFireworks(false); showOverlayFeedback(true, "Level 3 通過！準備挑戰結構方塊", () => startLevel(4)); }
+            } else {
+                recordMistake(q.text, selected, q.answer, q.hint);
+                showOverlayFeedback(false, "掉入陷阱了！<br><span class='text-xl text-white font-normal'>請點擊提示燈泡查看規則</span>", () => showHint(3));
+            }
+        }
+
+        function loadL4Question() {
+            const q = l4Data[l4CurrentIndex];
+            document.getElementById('l4-target-zh').innerText = q.zh;
+            l4CurrentAnswer = [];
+            renderL4Blocks();
+        }
+
+        function renderL4Blocks() {
+            const q = l4Data[l4CurrentIndex];
+            const bankContainer = document.getElementById('l4-word-bank');
+            const answerContainer = document.getElementById('l4-answer-zone');
+            bankContainer.innerHTML = '';
+            answerContainer.innerHTML = '';
+
+            let blocksToRender = [...q.blocks];
+            blocksToRender.sort((a, b) => a.text.localeCompare(b.text));
+
+            blocksToRender.forEach(block => {
+                if (!l4CurrentAnswer.includes(block.id)) bankContainer.appendChild(createBlockElement(block, false));
+            });
+
+            l4CurrentAnswer.forEach(blockId => {
+                const block = q.blocks.find(b => b.id === blockId);
+                answerContainer.appendChild(createBlockElement(block, true));
+            });
+        }
+
+        function createBlockElement(block, inAnswerZone) {
+            const el = document.createElement('div');
+            el.className = `word-block ${block.colorClass} text-white font-bold py-2 px-4 rounded-lg shadow-md border-2 border-white/20 flex items-center justify-center`;
+            el.innerText = block.text;
+            el.onclick = () => {
+                if (inAnswerZone) l4CurrentAnswer = l4CurrentAnswer.filter(id => id !== block.id);
+                else l4CurrentAnswer.push(block.id);
+                renderL4Blocks();
+            };
+            return el;
+        }
+
+        function checkL4Answer() {
+            const q = l4Data[l4CurrentIndex];
+            if (l4CurrentAnswer.length !== q.correctOrder.length) { showOverlayFeedback(false, "方塊還沒排完喔！", null); return; }
+
+            let isCorrect = true;
+            for (let i = 0; i < q.correctOrder.length; i++) {
+                if (l4CurrentAnswer[i] !== q.correctOrder[i]) { isCorrect = false; break; }
+            }
+
+            if (isCorrect) {
+                updateScore(30);
+                l4CurrentIndex++;
+                if (l4CurrentIndex < l4Data.length) showOverlayFeedback(true, "翻譯完美！結構正確", () => loadL4Question());
+                else { triggerFireworks(false); showOverlayFeedback(true, "準備好面對最終實力測驗了嗎？", () => startLevel(5)); }
+            } else {
+                const firstBlock = q.blocks.find(b => b.id === l4CurrentAnswer[0]);
+                const secondBlock = q.blocks.find(b => b.id === l4CurrentAnswer[1]);
+                let errorMsg = "順序不對喔！";
+                if (firstBlock && firstBlock.type !== 'noun') errorMsg = "提示：英文句子的開頭通常是主角/動作對象（藍色方塊）！";
+                else if (secondBlock && secondBlock.type !== 'rel') errorMsg = "提示：名詞後面要馬上接「關係代名詞（紅色）」來補充說明！";
+                showOverlayFeedback(false, errorMsg, () => { l4CurrentAnswer = []; renderL4Blocks(); });
+            }
+        }
+
+        function loadL5Question() {
+            const q = l5Data[l5CurrentIndex];
+            document.getElementById('l5-question').innerHTML = q.text;
+            document.getElementById('l5-progress').innerText = `測驗 ${l5CurrentIndex + 1} / ${l5Data.length}`;
+            const optionsContainer = document.getElementById('l5-options');
+            optionsContainer.innerHTML = '';
+            q.options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = "bg-white/90 text-blue-900 hover:bg-yellow-400 hover:text-blue-900 border-2 border-blue-300 rounded-xl py-3 px-4 font-bold text-lg text-left transition-colors shadow-md";
+                btn.innerText = opt;
+                btn.onclick = () => checkL5Answer(opt);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function checkL5Answer(selected) {
+            const q = l5Data[l5CurrentIndex];
+            if (selected === q.answer) {
+                updateScore(20);
+                l5CurrentIndex++;
+                if (l5CurrentIndex < l5Data.length) showOverlayFeedback(true, "正確！實力堅強！", () => loadL5Question());
+                else endGame();
+            } else {
+                recordMistake(q.text, selected, q.answer, q.hint);
+                showOverlayFeedback(false, "答錯了！<br><span class='text-xl text-white font-normal'>這題有陷阱，點擊紅色救生圈看提示！</span>", () => showHint(5));
+            }
+        }
+
+        // --- END GAME & GENERATE MISTAKE BOOK ---
+        function endGame() {
+            stopTimer();
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('final-time').innerText = document.getElementById('timer-display').innerText;
+            
+            // 生成錯題本 UI
+            const mistakeListContainer = document.getElementById('mistake-list');
+            if (mistakeLog.length === 0) {
+                mistakeListContainer.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-full text-center py-8">
+                        <i class="fa-solid fa-medal text-6xl text-yellow-300 mb-4"></i>
+                        <p class="text-2xl font-bold text-green-400">太神啦！你沒有任何錯題！</p>
+                        <p class="text-blue-200 mt-2">完美通關，這段考絕對沒問題！</p>
+                    </div>`;
+            } else {
+                let html = "";
+                mistakeLog.forEach((m, index) => {
+                    html += `
+                    <div class="bg-blue-900/60 p-4 rounded-xl border-l-4 border-red-400 shadow-md">
+                        <p class="font-bold text-lg text-white mb-2 pb-2 border-b border-white/10">Q: ${m.question}</p>
+                        <div class="flex flex-col sm:flex-row sm:space-x-4 mb-2">
+                            <p class="text-red-300 text-base"><i class="fa-solid fa-xmark mr-1"></i>你的答案: <span class="font-bold">${m.userAns}</span></p>
+                            <p class="text-green-400 text-base"><i class="fa-solid fa-check mr-1"></i>正確答案: <span class="font-bold">${m.correctAns}</span></p>
+                        </div>
+                        <p class="text-yellow-200 text-sm bg-black/30 p-3 rounded-lg leading-relaxed"><i class="fa-solid fa-lightbulb mr-1 text-yellow-400"></i><span class="font-bold">解析：</span>${m.hint}</p>
+                    </div>`;
+                });
+                mistakeListContainer.innerHTML = html;
+            }
+            
+            switchScreen('end');
+            triggerFireworks(true);
+            
+            setTimeout(() => {
+                if(audioCtx) {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.connect(gain); gain.connect(audioCtx.destination);
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); 
+                    osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.15); 
+                    osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.3); 
+                    osc.frequency.setValueAtTime(1046.50, audioCtx.currentTime + 0.45); 
+                    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1.0);
+                    osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 1.0);
+                }
+            }, 500);
+        }
+
+    </script>
+</body>
+</html>
